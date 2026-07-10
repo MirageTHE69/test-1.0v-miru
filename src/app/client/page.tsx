@@ -201,20 +201,38 @@ export default function ClientDashboardPage() {
     }
 
     if (item.type === 'VIDEO') {
+      const isUploadedVideo = item.contentUrl && (
+        item.contentUrl.endsWith('.mp4') || 
+        item.contentUrl.endsWith('.webm') || 
+        item.contentUrl.endsWith('.ogg') ||
+        item.contentUrl.startsWith('/uploads/')
+      );
+
       return (
         <div className="bg-slate-900 border-4 border-slate-800 rounded-3xl shadow-xl max-w-[280px] mx-auto overflow-hidden relative aspect-[9/16] text-white">
-          <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=500&auto=format&fit=crop&q=80" alt="Video cover" className="absolute inset-0 w-full h-full object-cover opacity-60" />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/20 flex flex-col justify-between p-4">
+          {isUploadedVideo ? (
+            <video 
+              src={item.contentUrl || undefined} 
+              controls 
+              className="absolute inset-0 w-full h-full object-cover opacity-85"
+              playsInline
+            />
+          ) : (
+            <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=500&auto=format&fit=crop&q=80" alt="Video cover" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/20 flex flex-col justify-between p-4 pointer-events-none">
             <div className="flex justify-between items-center pt-2">
               <span className="text-[11px] font-bold tracking-wide">Reels Preview</span>
               <Smartphone className="h-4 w-4 text-slate-400" />
             </div>
 
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="h-14 w-14 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center border border-white/40 shadow-lg animate-pulse">
-                <Play className="h-6 w-6 text-white fill-white ml-1" />
+            {!isUploadedVideo && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="h-14 w-14 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center border border-white/40 shadow-lg animate-pulse">
+                  <Play className="h-6 w-6 text-white fill-white ml-1" />
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="absolute right-3 bottom-16 flex flex-col items-center gap-4 text-slate-200">
               <div className="flex flex-col items-center">
@@ -238,7 +256,7 @@ export default function ClientDashboardPage() {
 
             <div className="space-y-2 mt-auto">
               <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-full bg-amber-800 text-white flex items-center justify-center font-bold text-xs">
+                <div className="h-7 w-7 rounded-full bg-amber-800 text-white flex items-center justify-center font-bold text-xs shrink-0">
                   {activeClient?.name.charAt(0)}
                 </div>
                 <span className="text-xs font-bold">{activeClient?.name.toLowerCase().replace(/\s+/g, '')}</span>
@@ -246,7 +264,7 @@ export default function ClientDashboardPage() {
               <p className="text-[10px] text-slate-200 leading-relaxed font-sans line-clamp-2">
                 Your table is waiting. Find your rainy-day solace at Bloom. ☕️🌧️
               </p>
-              <div className="flex items-center gap-1.5 text-[9px] text-indigo-300 font-bold bg-slate-900/60 rounded px-2 py-0.5 w-max">
+              <div className="flex items-center gap-1.5 text-[9px] text-indigo-300 font-bold bg-[#3a291b]/80 border border-[#E0C39E]/25 rounded px-2 py-0.5 w-max">
                 <Award className="h-3 w-3" /> Acoustic Lo-Fi Jazz Mix
               </div>
             </div>

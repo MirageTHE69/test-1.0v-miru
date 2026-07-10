@@ -6,6 +6,24 @@ import { publishToLinkedIn } from '@/lib/linkedin';
 type PublishStatus = 'SUCCESS' | 'FAILED' | 'SIMULATED';
 interface StatusLog { channel: string; status: PublishStatus; details: string }
 
+function sanitizeUrlAndHeaders(url: string, baseHeaders: Record<string, string> = {}): { url: string; headers: Record<string, string> } {
+  const headers = { ...baseHeaders };
+  let cleanUrl = url;
+  try {
+    const parsed = new URL(url);
+    if (parsed.username || parsed.password) {
+      const creds = `${parsed.username}:${parsed.password}`;
+      headers['Authorization'] = `Basic ${Buffer.from(creds).toString('base64')}`;
+      parsed.username = '';
+      parsed.password = '';
+      cleanUrl = parsed.toString();
+    }
+  } catch (e) {
+    // ignore
+  }
+  return { url: cleanUrl, headers };
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -75,14 +93,17 @@ export async function POST(request: Request) {
           try {
             const payload = {
               content,
+              message: content,
+              text: content,
               clientId,
               source: 'AgencyOS',
               timestamp: new Date().toISOString(),
               channel: 'custom',
             };
-            const res = await fetch(webhookUrl, {
+            const { url: cleanUrl, headers: cleanHeaders } = sanitizeUrlAndHeaders(webhookUrl, { 'Content-Type': 'application/json' });
+            const res = await fetch(cleanUrl, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: cleanHeaders,
               body: JSON.stringify(payload),
             });
             // Make.com returns 200, Zapier returns 200, n8n returns 200
@@ -106,14 +127,17 @@ export async function POST(request: Request) {
           try {
             const payload = {
               content,
+              message: content,
+              text: content,
               clientId,
               source: 'AgencyOS',
               timestamp: new Date().toISOString(),
               channel: 'facebook',
             };
-            const res = await fetch(webhookUrl, {
+            const { url: cleanUrl, headers: cleanHeaders } = sanitizeUrlAndHeaders(webhookUrl, { 'Content-Type': 'application/json' });
+            const res = await fetch(cleanUrl, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: cleanHeaders,
               body: JSON.stringify(payload),
             });
             if (res.ok || res.status === 204) {
@@ -136,14 +160,17 @@ export async function POST(request: Request) {
           try {
             const payload = {
               content,
+              message: content,
+              text: content,
               clientId,
               source: 'AgencyOS',
               timestamp: new Date().toISOString(),
               channel: 'instagram',
             };
-            const res = await fetch(webhookUrl, {
+            const { url: cleanUrl, headers: cleanHeaders } = sanitizeUrlAndHeaders(webhookUrl, { 'Content-Type': 'application/json' });
+            const res = await fetch(cleanUrl, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: cleanHeaders,
               body: JSON.stringify(payload),
             });
             if (res.ok || res.status === 204) {

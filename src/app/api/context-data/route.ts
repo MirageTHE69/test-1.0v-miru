@@ -25,7 +25,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, email, role } = body;
+    const { name, email, role, botName } = body;
 
     if (!name || !email || !role) {
       return NextResponse.json({ error: 'Missing required fields (name, email, role)' }, { status: 400 });
@@ -49,6 +49,7 @@ export async function POST(request: Request) {
         name,
         email,
         role: role.toUpperCase(),
+        botName: botName || 'Copilot',
         agencyId: agency.id,
       },
     });

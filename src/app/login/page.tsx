@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [isSignup, setIsSignup] = useState(false);
   const [name, setName] = useState('');
   const [role, setRole] = useState('MEMBER');
+  const [botName, setBotName] = useState('Copilot');
   const [signupSuccess, setSignupSuccess] = useState(false);
 
   // If already logged in, redirect to respective dashboard
@@ -86,7 +87,7 @@ export default function LoginPage() {
       const res = await fetch('/api/context-data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, role }),
+        body: JSON.stringify({ name, email, role, botName }),
       });
 
       const data = await res.json();
@@ -226,6 +227,19 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
+                  className="w-full rounded-lg border border-slate-800 bg-slate-955/50 py-2.5 px-4 text-xs text-white placeholder:text-slate-600 outline-none transition-all focus:border-indigo-600"
+                  required
+                />
+              </div>
+
+              {/* AI Bot Name input */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Your Custom AI Bot's Name</label>
+                <input
+                  type="text"
+                  value={botName}
+                  onChange={(e) => setBotName(e.target.value)}
+                  placeholder="e.g. MyAssistant, BloomBot, AaraBot"
                   className="w-full rounded-lg border border-slate-800 bg-slate-955/50 py-2.5 px-4 text-xs text-white placeholder:text-slate-600 outline-none transition-all focus:border-indigo-600"
                   required
                 />

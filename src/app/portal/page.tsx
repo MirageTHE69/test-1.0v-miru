@@ -28,7 +28,17 @@ import {
   ExternalLink,
   ChevronRight,
   TrendingUp,
-  Percent
+  Percent,
+  Upload,
+  Film,
+  Image as ImageIcon,
+  Heart,
+  Share2,
+  Bookmark,
+  Smartphone,
+  Play,
+  Laptop,
+  Award
 } from 'lucide-react';
 
 interface ApprovalType {
@@ -89,6 +99,13 @@ export default function AgencyManagerPortalPage() {
   const [appTextBody, setAppTextBody] = useState('');
   const [submittingApproval, setSubmittingApproval] = useState(false);
 
+  // File upload and modal preview states
+  const [uploadSource, setUploadSource] = useState<'url' | 'file'>('file');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState('');
+  const [uploadedFileSize, setUploadedFileSize] = useState<number | null>(null);
+  const [previewItem, setPreviewItem] = useState<ApprovalType | null>(null);
+
   const [showInvoiceForm, setShowInvoiceForm] = useState(false);
   const [invNumber, setInvNumber] = useState('');
   const [invAmount, setInvAmount] = useState('');
@@ -118,6 +135,218 @@ export default function AgencyManagerPortalPage() {
     fetchPortalData();
   }, [activeClient]);
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setAppContentUrl(data.url);
+        setUploadedFileName(data.fileName);
+        setUploadedFileSize(data.fileSize);
+      } else {
+        alert('Failed to upload file. Please try again.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error uploading file.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setAppContentUrl('');
+    setUploadedFileName('');
+    setUploadedFileSize(null);
+  };
+
+  // Render mock preview containers (matches the client dashboard preview layouts)
+  const renderVisualMockup = (item: ApprovalType) => {
+    const defaultImg = 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600&auto=format&fit=crop&q=80';
+    const mockImage = item.contentUrl || defaultImg;
+
+    if (item.type === 'IMAGE') {
+      return (
+        <div className="bg-[#FAF9F6] border border-slate-200 rounded-2xl shadow-inner max-w-sm mx-auto overflow-hidden w-full text-slate-800">
+          <div className="bg-white border-b border-slate-100 px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-full bg-amber-800 text-white flex items-center justify-center font-bold text-sm border border-amber-900 shadow-xs shrink-0">
+                {activeClient?.name.charAt(0)}
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-800 block text-left">{activeClient?.name}</span>
+                <span className="text-[10px] text-slate-400 block font-semibold leading-none text-left">Sponsored · Post Preview</span>
+              </div>
+            </div>
+            <span className="text-slate-400 font-bold text-xs tracking-widest">•••</span>
+          </div>
+
+          <div className="relative bg-slate-100 aspect-square overflow-hidden">
+            <img src={mockImage} alt="Instagram Post Mockup" className="w-full h-full object-cover" />
+          </div>
+
+          <div className="bg-white p-3.5 space-y-2">
+            <div className="flex justify-between items-center text-slate-700">
+              <div className="flex items-center gap-4">
+                <Heart className="h-5 w-5 text-rose-500 fill-rose-500" />
+                <MessageSquare className="h-5 w-5" />
+                <Share2 className="h-5 w-5" />
+              </div>
+              <Bookmark className="h-5 w-5" />
+            </div>
+            <div className="text-xs text-left">
+              <span className="font-bold text-slate-800">142 Likes</span>
+              <p className="text-[11px] text-slate-650 mt-1 leading-relaxed">
+                <span className="font-bold text-slate-800 mr-1.5">{activeClient?.name.toLowerCase().replace(/\s+/g, '')}</span>
+                Seek shelter in our warm, aromatic coffee workspace this monsoon season...
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (item.type === 'VIDEO') {
+      const isUploadedVideo = item.contentUrl && (
+        item.contentUrl.endsWith('.mp4') || 
+        item.contentUrl.endsWith('.webm') || 
+        item.contentUrl.endsWith('.ogg') ||
+        item.contentUrl.startsWith('/uploads/')
+      );
+
+      return (
+        <div className="bg-slate-900 border-4 border-slate-800 rounded-3xl shadow-xl max-w-[280px] mx-auto overflow-hidden relative aspect-[9/16] text-white w-full">
+          {isUploadedVideo ? (
+            <video 
+              src={item.contentUrl || undefined} 
+              controls 
+              className="absolute inset-0 w-full h-full object-cover opacity-85"
+              playsInline
+            />
+          ) : (
+            <img src="https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=500&auto=format&fit=crop&q=80" alt="Video cover" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-black/20 flex flex-col justify-between p-4 pointer-events-none">
+            <div className="flex justify-between items-center pt-2">
+              <span className="text-[11px] font-bold tracking-wide">Reels Preview</span>
+              <Smartphone className="h-4 w-4 text-slate-400" />
+            </div>
+
+            {!isUploadedVideo && (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="h-14 w-14 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center border border-white/40 shadow-lg">
+                  <Play className="h-6 w-6 text-white fill-white ml-1" />
+                </div>
+              </div>
+            )}
+
+            <div className="absolute right-3 bottom-16 flex flex-col items-center gap-4 text-slate-200">
+              <div className="flex flex-col items-center">
+                <div className="h-9 w-9 rounded-full bg-slate-800/60 flex items-center justify-center border border-slate-700/40">
+                  <Heart className="h-4.5 w-4.5 text-white fill-white" />
+                </div>
+                <span className="text-[9px] mt-0.5 font-bold">1.2k</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <div className="h-9 w-9 rounded-full bg-slate-800/60 flex items-center justify-center border border-slate-700/40">
+                  <MessageSquare className="h-4.5 w-4.5" />
+                </div>
+                <span className="text-[9px] mt-0.5 font-bold">45</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <div className="h-9 w-9 rounded-full bg-slate-800/60 flex items-center justify-center border border-slate-700/40">
+                  <Share2 className="h-4.5 w-4.5" />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2 mt-auto text-left">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-full bg-amber-800 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                  {activeClient?.name.charAt(0)}
+                </div>
+                <span className="text-xs font-bold">{activeClient?.name.toLowerCase().replace(/\s+/g, '')}</span>
+              </div>
+              <p className="text-[10px] text-slate-250 leading-relaxed font-sans line-clamp-2">
+                Your table is waiting. Find your rainy-day solace at Bloom. ☕️🌧️
+              </p>
+              <div className="flex items-center gap-1.5 text-[9px] text-indigo-300 font-bold bg-slate-900/60 rounded px-2 py-0.5 w-max">
+                <Award className="h-3 w-3" /> Acoustic Lo-Fi Jazz Mix
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (item.type === 'LINK') {
+      return (
+        <div className="bg-[#F8F9FD] border border-slate-300 rounded-2xl shadow-xl overflow-hidden flex flex-col h-72 w-full text-slate-800">
+          <div className="bg-slate-100 border-b border-slate-200 px-4 py-2 flex items-center gap-3">
+            <div className="flex gap-1.5 shrink-0">
+              <div className="h-3 w-3 rounded-full bg-rose-400" />
+              <div className="h-3 w-3 rounded-full bg-amber-400" />
+              <div className="h-3 w-3 rounded-full bg-emerald-400" />
+            </div>
+            <div className="flex-1 bg-white border border-slate-200 rounded-md py-0.5 px-3 text-[10px] text-slate-400 font-semibold flex items-center gap-1.5 truncate">
+              <Globe className="h-3 w-3 text-slate-300 shrink-0" />
+              {mockImage}
+            </div>
+            <Laptop className="h-4 w-4 text-slate-400 shrink-0" />
+          </div>
+
+          <div className="flex-1 overflow-y-auto bg-[#FDFBF7] p-5 text-[#4F3824] flex flex-col justify-between">
+            <div className="flex justify-between items-center border-b border-[#E0C39E]/30 pb-3">
+              <div className="flex items-center gap-1.5">
+                <div className="h-6 w-6 rounded bg-[#4F3824] text-white flex items-center justify-center font-bold text-xs shrink-0">B</div>
+                <span className="text-xs font-extrabold font-tight">BLOOM CAFÉ</span>
+              </div>
+              <div className="flex gap-3 text-[9px] font-bold uppercase tracking-wider text-[#4F3824]/85">
+                <span>Menu</span>
+                <span>Our Roast</span>
+              </div>
+            </div>
+
+            <div className="my-auto text-center space-y-2">
+              <h2 className="text-sm font-extrabold font-tight leading-tight max-w-[200px] mx-auto">
+                Sanctuary For Single-Origin Pour-overs.
+              </h2>
+              <a href={mockImage} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[9px] text-indigo-650 hover:underline font-bold">
+                Open live link <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl shadow-md p-6 h-64 overflow-y-auto flex flex-col justify-between w-full text-slate-800">
+        <div>
+          <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+            <FileText className="h-5 w-5 text-indigo-600" />
+            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Document Transcript</span>
+          </div>
+          <p className="text-xs text-slate-500 mt-4 leading-relaxed line-clamp-5 text-left">
+            {item.textBody}
+          </p>
+        </div>
+        <span className="text-[9px] text-slate-400 font-mono text-left">Document Format: copy pass draft</span>
+      </div>
+    );
+  };
+
   const handleCreateApproval = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeClient || !appTitle.trim()) return;
@@ -141,6 +370,8 @@ export default function AgencyManagerPortalPage() {
         setAppTitle('');
         setAppContentUrl('');
         setAppTextBody('');
+        setUploadedFileName('');
+        setUploadedFileSize(null);
         setShowApprovalForm(false);
         fetchPortalData();
       }
@@ -366,12 +597,27 @@ export default function AgencyManagerPortalPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Type</label>
                       <select
                         value={appType}
-                        onChange={(e) => setAppType(e.target.value)}
+                        onChange={(e) => {
+                          const newType = e.target.value;
+                          setAppType(newType);
+                          // Default uploadSource based on type
+                          if (newType === 'LINK') {
+                            setUploadSource('url');
+                          } else if (newType === 'TEXT') {
+                            setUploadSource('url'); // hidden anyway
+                          } else {
+                            setUploadSource('file');
+                          }
+                          // Clear previous file values
+                          setAppContentUrl('');
+                          setUploadedFileName('');
+                          setUploadedFileSize(null);
+                        }}
                         className="w-full text-xs rounded-lg border border-slate-200 p-2 bg-white outline-none focus:border-indigo-500"
                       >
                         <option value="IMAGE">Social Post (IMAGE)</option>
@@ -381,17 +627,138 @@ export default function AgencyManagerPortalPage() {
                       </select>
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Visual URL / cover image</label>
-                      <input
-                        type="text"
-                        value={appContentUrl}
-                        onChange={(e) => setAppContentUrl(e.target.value)}
-                        placeholder="e.g. https://images.unsplash.com/..."
-                        className="w-full text-xs rounded-lg border border-slate-200 p-2 bg-white"
-                      />
-                    </div>
+                    {(appType === 'IMAGE' || appType === 'VIDEO') && (
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Asset Source</label>
+                        <div className="flex gap-2 p-0.5 bg-slate-100 rounded-lg border border-slate-200">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUploadSource('file');
+                              setAppContentUrl('');
+                            }}
+                            className={`flex-1 py-1 text-center rounded-md font-bold text-[10px] uppercase transition-all ${
+                              uploadSource === 'file'
+                                ? 'bg-white text-indigo-650 shadow-xs'
+                                : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                          >
+                            Upload File
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setUploadSource('url');
+                              setAppContentUrl('');
+                            }}
+                            className={`flex-1 py-1 text-center rounded-md font-bold text-[10px] uppercase transition-all ${
+                              uploadSource === 'url'
+                                ? 'bg-white text-indigo-650 shadow-xs'
+                                : 'text-slate-500 hover:text-slate-700'
+                            }`}
+                          >
+                            Paste URL
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Conditional Upload/URL Area */}
+                  {appType !== 'TEXT' && (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                        {appType === 'LINK'
+                          ? 'Mockup / Website URL'
+                          : uploadSource === 'file'
+                          ? 'Upload Photo/Video'
+                          : 'Visual URL / Cover Image Link'}
+                      </label>
+
+                      {appType === 'LINK' || uploadSource === 'url' ? (
+                        <input
+                          type="text"
+                          value={appContentUrl}
+                          onChange={(e) => setAppContentUrl(e.target.value)}
+                          placeholder={
+                            appType === 'LINK'
+                              ? 'e.g. https://bloomcafe.com/mockup'
+                              : 'e.g. https://images.unsplash.com/photo-...'
+                          }
+                          className="w-full text-xs rounded-lg border border-slate-200 p-2.5 bg-white outline-none focus:border-indigo-500"
+                          required
+                        />
+                      ) : (
+                        // File Upload Zone
+                        <div className="space-y-2">
+                          {isUploading ? (
+                            <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-xl p-8 bg-white min-h-[140px] space-y-3">
+                              <RefreshCw className="h-6 w-6 text-indigo-600 animate-spin" />
+                              <span className="text-xs text-slate-550 font-bold">Uploading asset to server...</span>
+                            </div>
+                          ) : appContentUrl ? (
+                            // File Upload Success State & Mini-Preview
+                            <div className="flex items-center justify-between border border-slate-200 rounded-xl p-3 bg-white gap-4">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="h-12 w-12 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0 overflow-hidden relative">
+                                  {appType === 'IMAGE' ? (
+                                    <img src={appContentUrl} alt="Thumbnail preview" className="h-full w-full object-cover" />
+                                  ) : (
+                                    <div className="flex items-center justify-center h-full w-full bg-slate-100">
+                                      <Film className="h-5 w-5 text-indigo-500" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="min-w-0 text-left">
+                                  <p className="text-xs font-bold text-slate-800 truncate" title={uploadedFileName}>
+                                    {uploadedFileName || 'Uploaded file'}
+                                  </p>
+                                  <p className="text-[9px] text-slate-400 font-semibold mt-0.5">
+                                    {uploadedFileSize
+                                      ? `${(uploadedFileSize / (1024 * 1024)).toFixed(2)} MB`
+                                      : 'Successfully uploaded'}
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={handleRemoveFile}
+                                className="rounded-lg p-2 text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition-colors shrink-0"
+                                title="Remove file"
+                              >
+                                <Trash2 className="h-4.5 w-4.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            // Big Dotted Dropzone
+                            <div>
+                              <input
+                                type="file"
+                                accept={appType === 'IMAGE' ? 'image/*' : 'video/*'}
+                                onChange={handleFileUpload}
+                                className="hidden"
+                                id="file-uploader-input"
+                              />
+                              <label
+                                htmlFor="file-uploader-input"
+                                className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-xl p-6 bg-white hover:bg-slate-50/50 cursor-pointer transition-colors text-center group min-h-[140px]"
+                              >
+                                <div className="h-10 w-10 rounded-full bg-slate-50 border border-slate-150 flex items-center justify-center text-slate-400 group-hover:text-indigo-600 group-hover:bg-indigo-50 group-hover:border-indigo-150 transition-colors">
+                                  <Upload className="h-5 w-5" />
+                                </div>
+                                <span className="text-xs font-bold text-slate-700 mt-3 group-hover:text-indigo-650 transition-colors">
+                                  Choose a {appType.toLowerCase()} file
+                                </span>
+                                <span className="text-[9px] text-slate-400 font-semibold mt-1">
+                                  Drag & drop or browse from PC ({appType === 'IMAGE' ? 'PNG, JPG, WEBP' : 'MP4, WEBM'})
+                                </span>
+                              </label>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="space-y-1">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Deliverable Copy Caption / Details</label>
@@ -460,14 +827,23 @@ export default function AgencyManagerPortalPage() {
                               <span className="text-slate-350 italic">No feedback submitted</span>
                             )}
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-6 py-4 flex items-center gap-3">
+                            <button
+                              onClick={() => setPreviewItem(app)}
+                              className="text-indigo-600 hover:text-indigo-800 hover:underline font-bold transition-all"
+                            >
+                              Preview
+                            </button>
                             {app.status === 'PENDING' && (
-                              <button
-                                onClick={() => handleForceApprove(app.id)}
-                                className="text-indigo-600 hover:text-indigo-800 hover:underline font-bold"
-                              >
-                                Force Approve
-                              </button>
+                              <>
+                                <span className="text-slate-200">|</span>
+                                <button
+                                  onClick={() => handleForceApprove(app.id)}
+                                  className="text-indigo-600 hover:text-indigo-800 hover:underline font-bold transition-all"
+                                >
+                                  Force Approve
+                                </button>
+                              </>
                             )}
                           </td>
                         </tr>
@@ -590,6 +966,61 @@ export default function AgencyManagerPortalPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+      {/* Visual Preview Modal */}
+      {previewItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs animate-fade-in p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-hidden shadow-2xl border border-slate-100 flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 p-5 shrink-0">
+              <div>
+                <span className="text-[9px] font-bold uppercase tracking-wider bg-slate-100 border px-2 py-0.5 rounded text-slate-550">
+                  {previewItem.type} Deliverable
+                </span>
+                <h3 className="text-sm font-extrabold text-slate-900 mt-1">{previewItem.title}</h3>
+              </div>
+              <button
+                onClick={() => setPreviewItem(null)}
+                className="rounded-lg p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-650 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-slate-50/50">
+              <div className="bg-slate-50 border border-slate-150 rounded-2xl p-5 flex flex-col justify-center min-h-[300px]">
+                {renderVisualMockup(previewItem)}
+              </div>
+
+              {previewItem.textBody && (
+                <div className="rounded-xl bg-white p-4 border border-slate-200 text-xs">
+                  <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Caption Copy / Details</h4>
+                  <div className="prose prose-sm max-w-none text-slate-700">
+                    <MarkdownRenderer content={previewItem.textBody} />
+                  </div>
+                </div>
+              )}
+
+              {previewItem.feedback && (
+                <div className="rounded-lg bg-rose-50/55 border border-rose-100 p-3.5 text-xs text-rose-800 leading-normal">
+                  <strong className="block mb-0.5">Feedback History:</strong>
+                  {previewItem.feedback}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-slate-100 p-4 bg-slate-50 flex justify-end shrink-0">
+              <button
+                onClick={() => setPreviewItem(null)}
+                className="rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-4 py-2 transition-colors cursor-pointer"
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

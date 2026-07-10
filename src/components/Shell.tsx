@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
+import MarkdownRenderer from '@/components/MarkdownRenderer';
 import {
   LayoutDashboard,
   Users,
@@ -40,6 +41,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     isAiPanelOpen,
     setIsAiPanelOpen,
     clients,
+    reloadContext,
   } = useApp();
 
   const [isClientDropdownOpen, setIsClientDropdownOpen] = useState(false);
@@ -93,14 +95,16 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [aiActiveTab, setAiActiveTab] = useState<'pm' | 'copywriter' | 'seo' | 'finance'>('pm');
   const [aiInput, setAiInput] = useState('');
   const [aiChats, setAiChats] = useState<{ sender: 'user' | 'ai'; text: string; time: string }[]>([]);
+  const [isAiTyping, setIsAiTyping] = useState(false);
 
   // Dynamically initialize AI copilot greeting
   useEffect(() => {
+    const currentBotName = activeUser?.botName || 'AI Copilot';
     if (activeClient) {
       setAiChats([
         {
           sender: 'ai',
-          text: `Hello ${activeUser?.name || 'Aarav'}! I have synchronized with ${activeClient.name}'s workspace. Brand tone guidelines are loaded. Let me know if you need to draft content or analyze budgets.`,
+          text: `Hello ${activeUser?.name || 'Aarav'}! I'm **${currentBotName}**, your AI agency copilot. I have synchronized with **${activeClient.name}**'s brand guidelines, campaigns, and financial logs. How can I help you today? ☕`,
           time: 'Just now',
         }
       ]);
@@ -108,7 +112,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       setAiChats([
         {
           sender: 'ai',
-          text: `Welcome to AgencyOS! Choose a client account to begin co-piloting.`,
+          text: `Welcome to AgencyOS! Choose a client account from the top header to begin co-piloting.`,
           time: 'Just now',
         }
       ]);
@@ -128,27 +132,65 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const handleSendAiMessage = () => {
+  const handleSendAiMessage = async () => {
     if (!aiInput.trim()) return;
-    const newChats = [...aiChats, { sender: 'user' as const, text: aiInput, time: 'Just now' }];
-    setAiChats(newChats);
+    const currentBotName = activeUser?.botName || 'AI Copilot';
+    const userMsg = aiInput;
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    setAiChats((prev) => [...prev, { sender: 'user' as const, text: userMsg, time: timestamp }]);
     setAiInput('');
+    setIsAiTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      let replyText = "I'm processing that request. Let me check the details for " + (activeClient?.name || 'this client') + ".";
-      if (aiActiveTab === 'copywriter') {
-        replyText = `✨ Proposal draft generated based on ${activeClient?.name || 'Client'}'s Brand Memory. I have updated the proposal text in the CRM. You can review it now.`;
-      } else if (aiActiveTab === 'pm') {
-        replyText = `Done — draft ready in Comms for your review before sending. ✨`;
-      } else if (aiActiveTab === 'seo') {
-        replyText = `Analysis complete. Keyword ranking for "${activeClient?.name || 'Client'}" has improved by 4 spots this week. Suggested actions updated in report.`;
-      } else if (aiActiveTab === 'finance') {
-        replyText = `Live margin check: ${activeClient?.name || 'Client'} stands at a stable profitability index of 52%. All invoices are currently paid.`;
+    try {
+      const res = await fetch('/api/chatbot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userMsg,
+          activeTab: aiActiveTab,
+          clientId: activeClient?.id,
+          userBotName: currentBotName
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setAiChats((prev) => [
+          ...prev,
+          {
+            sender: 'ai' as const,
+            text: data.reply,
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+        ]);
+        if (data.actionTriggered === 'SCHEDULE_POST') {
+          reloadContext();
+        }
+      } else {
+        const data = await res.json();
+        setAiChats((prev) => [
+          ...prev,
+          {
+            sender: 'ai' as const,
+            text: `⚠️ Error: ${data.error || 'Failed to process AI response'}`,
+            time: 'Just now'
+          }
+        ]);
       }
-
-      setAiChats((prev) => [...prev, { sender: 'ai' as const, text: replyText, time: 'Just now' }]);
-    }, 1200);
+    } catch (err) {
+      console.error(err);
+      setAiChats((prev) => [
+        ...prev,
+        {
+          sender: 'ai' as const,
+          text: '⚠️ Communication error. Failed to reach the AI assistant service.',
+          time: 'Just now'
+        }
+      ]);
+    } finally {
+      setIsAiTyping(false);
+    }
   };
 
   const navItems = [
@@ -404,7 +446,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               <div className="flex items-center justify-between border-b border-slate-200 p-4">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-indigo-600 animate-pulse" />
-                  <h2 className="font-semibold text-slate-800">AI Team</h2>
+                  <h2 className="font-semibold text-slate-800">{activeUser?.botName || 'AI Copilot'}</h2>
                 </div>
                 <button
                   onClick={() => setIsAiPanelOpen(false)}
@@ -442,33 +484,60 @@ export default function Shell({ children }: { children: React.ReactNode }) {
                         : 'bg-slate-100 text-slate-800 mr-auto rounded-tl-none'
                     }`}
                   >
-                    <p className="leading-relaxed">{chat.text}</p>
+                    <div className="leading-relaxed whitespace-pre-wrap text-left chatbot-markdown">
+                      <MarkdownRenderer content={chat.text} />
+                    </div>
                     <span className={`text-[10px] mt-1 text-right block ${chat.sender === 'user' ? 'text-indigo-200' : 'text-slate-400'}`}>
                       {chat.time}
                     </span>
                   </div>
                 ))}
+                
+                {isAiTyping && (
+                  <div className="bg-slate-100 text-slate-800 mr-auto rounded-tl-none rounded-lg p-3 max-w-[85%] flex items-center gap-1.5 justify-center">
+                    <div className="h-2 w-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="h-2 w-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="h-2 w-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+                )}
               </div>
 
               {/* Suggestions quick action buttons */}
               {aiActiveTab === 'pm' && (
                 <div className="px-4 py-2 border-t border-slate-100 bg-slate-50/20 space-y-2">
                   <button
-                    onClick={() => {
-                      setAiChats((prev) => [
-                        ...prev,
-                        { sender: 'user', text: 'Yes, notify designer Aarav and Priya.', time: 'Just now' },
-                      ]);
-                      setTimeout(() => {
-                        setAiChats((prev) => [
-                          ...prev,
-                          { sender: 'ai', text: 'Done — draft ready in Comms for your review before sending. ✨', time: 'Just now' },
-                        ]);
-                      }, 1000);
+                    onClick={async () => {
+                      const userMsg = 'Give me project insights and status report';
+                      const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      setAiChats((prev) => [...prev, { sender: 'user' as const, text: userMsg, time: timestamp }]);
+                      setIsAiTyping(true);
+                      try {
+                        const res = await fetch('/api/chatbot', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            message: userMsg,
+                            activeTab: 'pm',
+                            clientId: activeClient?.id,
+                            userBotName: activeUser?.botName || 'AI Copilot'
+                          }),
+                        });
+                        if (res.ok) {
+                          const data = await res.json();
+                          setAiChats((prev) => [
+                            ...prev,
+                            { sender: 'ai' as const, text: data.reply, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+                          ]);
+                        }
+                      } catch (err) {
+                        console.error(err);
+                      } finally {
+                        setIsAiTyping(false);
+                      }
                     }}
                     className="w-full text-left rounded-lg bg-indigo-50 border border-indigo-100 px-3 py-2 text-xs font-semibold text-indigo-700 transition-colors hover:bg-indigo-100"
                   >
-                    Yes, and draft the client update message.
+                    📈 Fetch Campaign Status Insights
                   </button>
                 </div>
               )}

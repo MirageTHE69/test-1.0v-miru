@@ -31,6 +31,7 @@ async function main() {
       name: 'Aarav Patel',
       email: 'aarav@agencyos.ai',
       role: 'OWNER',
+      botName: 'AaraBot',
       agencyId: agency.id,
     },
   });
@@ -40,6 +41,7 @@ async function main() {
       name: 'Priya Sharma',
       email: 'priya@agencyos.ai',
       role: 'MANAGER',
+      botName: 'PriyaBot',
       agencyId: agency.id,
     },
   });
@@ -49,6 +51,7 @@ async function main() {
       name: 'Meera (Bloom Cafe)',
       email: 'client@bloomcafe.com',
       role: 'CLIENT',
+      botName: 'BloomBot',
       agencyId: agency.id,
     },
   });

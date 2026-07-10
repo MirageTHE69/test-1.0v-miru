@@ -24,6 +24,7 @@ model User {
   email     String   @unique
   name      String
   role      String   // OWNER, MANAGER, MEMBER
+  botName   String?  // Custom chatbot assistant name
   agencyId  String
   agency    Agency   @relation(fields: [agencyId], references: [id], onDelete: Cascade)
   tasks     Task[]
@@ -46,6 +47,7 @@ model Client {
   invoices      Invoice[]
   meetings      Meeting[]
   automationFlows AutomationFlow[]
+  emailCampaigns  EmailCampaign[]
   createdAt     DateTime       @default(now())
 }
 
@@ -193,3 +195,31 @@ model AutomationLog {
   createdAt      DateTime @default(now())
 }
 
+model EmailCampaign {
+  id           String         @id @default(uuid())
+  name         String
+  subject      String
+  fromName     String
+  replyTo      String?
+  htmlBody     String
+  resendApiKey String?        // Resend API key (optional; can be global env)
+  fromAddress  String
+  status       String         @default("DRAFT") // DRAFT, SENDING, SENT, FAILED
+  sentAt       DateTime?
+  clientId     String
+  client       Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  contacts     EmailContact[]
+  createdAt    DateTime       @default(now())
+}
+
+model EmailContact {
+  id         String        @id @default(uuid())
+  name       String
+  email      String
+  status     String        @default("PENDING") // PENDING, SENT, FAILED, BOUNCED
+  sentAt     DateTime?
+  errorMsg   String?
+  campaignId String
+  campaign   EmailCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  createdAt  DateTime      @default(now())
+}

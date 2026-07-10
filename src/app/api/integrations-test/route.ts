@@ -2,6 +2,24 @@ import { NextResponse } from 'next/server';
 import { publishToX } from '@/lib/twitter';
 import { getLinkedInProfile } from '@/lib/linkedin';
 
+function sanitizeUrlAndHeaders(url: string, baseHeaders: Record<string, string> = {}): { url: string; headers: Record<string, string> } {
+  const headers = { ...baseHeaders };
+  let cleanUrl = url;
+  try {
+    const parsed = new URL(url);
+    if (parsed.username || parsed.password) {
+      const creds = `${parsed.username}:${parsed.password}`;
+      headers['Authorization'] = `Basic ${Buffer.from(creds).toString('base64')}`;
+      parsed.username = '';
+      parsed.password = '';
+      cleanUrl = parsed.toString();
+    }
+  } catch (e) {
+    // ignore
+  }
+  return { url: cleanUrl, headers };
+}
+
 /**
  * POST /api/integrations-test
  * Tests a live connection for a given platform.
@@ -66,13 +84,16 @@ export async function POST(request: Request) {
       try {
         const testPayload = {
           content: '✅ AgencyOS connection test successful! This webhook is live and ready to receive posts from AgencyOS.',
+          message: '✅ AgencyOS connection test successful! This webhook is live and ready to receive posts from AgencyOS.',
+          text: '✅ AgencyOS connection test successful! This webhook is live and ready to receive posts from AgencyOS.',
           source: 'AgencyOS',
           event: 'connection_test',
           timestamp: new Date().toISOString(),
         };
-        const res = await fetch(webhookUrl, {
+        const { url: cleanUrl, headers: cleanHeaders } = sanitizeUrlAndHeaders(webhookUrl, { 'Content-Type': 'application/json' });
+        const res = await fetch(cleanUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: cleanHeaders,
           body: JSON.stringify(testPayload),
         });
         if (res.ok || res.status === 204) {

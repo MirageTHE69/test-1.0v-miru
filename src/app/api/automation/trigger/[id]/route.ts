@@ -2,6 +2,24 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { publishToLinkedIn } from '@/lib/linkedin';
 
+function sanitizeUrlAndHeaders(url: string, baseHeaders: Record<string, string> = {}): { url: string; headers: Record<string, string> } {
+  const headers = { ...baseHeaders };
+  let cleanUrl = url;
+  try {
+    const parsed = new URL(url);
+    if (parsed.username || parsed.password) {
+      const creds = `${parsed.username}:${parsed.password}`;
+      headers['Authorization'] = `Basic ${Buffer.from(creds).toString('base64')}`;
+      parsed.username = '';
+      parsed.password = '';
+      cleanUrl = parsed.toString();
+    }
+  } catch (e) {
+    // ignore
+  }
+  return { url: cleanUrl, headers };
+}
+
 function extractPostText(payload: any, template?: string): string {
   if (template) {
     // Interpolate placeholders like {field_name}
@@ -167,13 +185,16 @@ export async function POST(
         const webhookUrl = brandMemory?.customWebhookUrl;
         if (webhookUrl) {
           try {
-            const res = await fetch(webhookUrl, {
+            const { url: cleanUrl, headers: cleanHeaders } = sanitizeUrlAndHeaders(webhookUrl, { 'Content-Type': 'application/json' });
+            const res = await fetch(cleanUrl, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: cleanHeaders,
               body: JSON.stringify({
                 event: 'automation_trigger',
                 flowName: flow.name,
                 text: postText,
+                message: postText,
+                content: postText,
                 rawPayload: payload
               })
             });
