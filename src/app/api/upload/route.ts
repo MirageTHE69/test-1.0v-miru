@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
+import { saveUpload } from '@/lib/uploads';
 
 export async function POST(request: Request) {
   try {
@@ -13,20 +11,12 @@ export async function POST(request: Request) {
     }
 
     const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
-    // Create a public/uploads directory if it doesn't exist
-    const uploadDir = join(process.cwd(), 'public', 'uploads');
-    if (!existsSync(uploadDir)) {
-      await mkdir(uploadDir, { recursive: true });
-    }
 
     // Generate unique filename to avoid collision
     const sanitizedFilename = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const filename = `${Date.now()}-${sanitizedFilename}`;
-    const filePath = join(uploadDir, filename);
 
-    await writeFile(filePath, buffer);
+    await saveUpload(filename, bytes, file.type || 'application/octet-stream');
 
     const fileUrl = `/uploads/${filename}`;
 

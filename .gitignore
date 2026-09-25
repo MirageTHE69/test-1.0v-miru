@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local uploads (production uses Netlify Blobs)
+/.uploads
+/public/uploads
+
+# old SQLite database
+prisma/dev.db
